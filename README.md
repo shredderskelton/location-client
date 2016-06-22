@@ -9,7 +9,7 @@ Include
 Include jcenter in your repo list:
 ```
     
-    allprojects {
+    buildscript {
         repositories {
             jcenter()
         }
@@ -19,7 +19,7 @@ Add to your dependencies:
 
 ```
 
-    compile 'com.shredder:location:0.0.2'
+    compile 'com.shredder:location:0.0.+'
     
 ```
 
