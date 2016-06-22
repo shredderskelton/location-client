@@ -1,0 +1,97 @@
+apply plugin: 'com.android.application'
+
+ext.vMajor = 1
+ext.vMinor = 0
+ext.vBugfix = 0
+
+apply plugin: 'android-apt'
+
+android {
+    compileSdkVersion 23
+    buildToolsVersion "23.0.3"
+
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    def aliasProp = properties.getProperty('release.alias')
+    def passwordKeyProp = properties.getProperty('release.keypassword')
+    def passwordStoreProp = properties.getProperty('release.storepassword')
+
+    signingConfigs {
+        debug {
+            storeFile file("shredder-debug.keystore")
+            keyAlias 'followmedebug'
+            keyPassword 'password'
+            storePassword 'password'
+        }
+        release {
+            storeFile file("shredder.keystore")
+            keyAlias aliasProp
+            keyPassword passwordKeyProp
+            storePassword passwordStoreProp
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.shredder.location.app"
+        minSdkVersion 15
+        targetSdkVersion 23
+        versionCode getBuildNumber()
+        versionName computeVersionName()
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+        }
+
+        release {
+            debuggable false
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile 'com.android.support:appcompat-v7:23.3.0'
+    compile 'com.android.support:design:23.3.0'
+    compile 'com.google.android.gms:play-services-location:9.0.2'
+    compile 'com.google.android.gms:play-services-maps:9.0.2'
+    compile 'com.jakewharton:butterknife:7.0.1'
+    compile 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.0.2'
+    compile 'com.google.code.gson:gson:2.4'
+    compile 'com.shredder:mqtt:0.0.4'
+    compile project(":location")
+    provided "org.projectlombok:lombok:1.16.4"
+    apt "org.projectlombok:lombok:1.16.4"
+}
+
+def getBuildNumber() {
+    def versionCodeFile = file('buildNumber')
+    def versionCode = 9999
+
+    if (versionCodeFile.exists()) {
+        versionCode = versionCodeFile.getText().trim()
+    } else {
+        println "Could not read buildNumber file. Version is set to default 9999. If you are seeing this on the build server, make sure you are executing 'git rev-list --no-merges HEAD | wc -l>app/buildNumber' before running the gradle build."
+    }
+
+    return Integer.valueOf(versionCode)
+}
+
+def writeVersionTagFile(versionNameString) {
+    println sprintf("Writing versionName to versionTag file: versionName=%s", versionNameString)
+    def versionNameFile = file('versionTag')
+    if (!versionNameFile.exists()) {
+        versionNameFile.createNewFile()
+    }
+    versionNameFile.setText(versionNameString)
+}
+
+def computeVersionName() {
+    def fullVersionString = String.format('%d.%d.%d.%d', vMajor, vMinor, vBugfix, getBuildNumber())
+    writeVersionTagFile(fullVersionString)
+    println "Full versionName is " + fullVersionString
+    return fullVersionString
+}
