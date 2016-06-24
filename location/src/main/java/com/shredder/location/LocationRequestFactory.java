@@ -6,22 +6,23 @@ public class LocationRequestFactory {
     public LocationRequest createRequest(LocationConfig config) {
         switch (config.getAccuracy()) {
             case Lowest:
-                return createRequest(60000, LocationRequest.PRIORITY_NO_POWER);
+                return createRequest(20000, LocationRequest.PRIORITY_NO_POWER);
             case Low:
-                return createRequest(10000, LocationRequest.PRIORITY_LOW_POWER);
+                return createRequest(15000, LocationRequest.PRIORITY_LOW_POWER);
             case High:
-                return createRequest(5000, LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+                return createRequest(10000, LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
             case Highest:
             default:
-                return createRequest(5000, LocationRequest.PRIORITY_HIGH_ACCURACY);
+                return createRequest(10000, LocationRequest.PRIORITY_HIGH_ACCURACY);
         }
     }
 
     private LocationRequest createRequest(int interval, int priority) {
         LocationRequest mLocationRequest = LocationRequest.create();
         mLocationRequest.setInterval(interval);
-        mLocationRequest.setFastestInterval(1000);
+        mLocationRequest.setFastestInterval(5000);
         mLocationRequest.setPriority(priority);
+        mLocationRequest.setSmallestDisplacement(5);
         return mLocationRequest;
     }
 }
