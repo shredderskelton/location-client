@@ -18,6 +18,8 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
+import lombok.Getter;
+
 public class GoogleLocationProvider {
 
     public interface OnLocationChangedListener {
@@ -30,6 +32,9 @@ public class GoogleLocationProvider {
     private LocationConfig config;
     private boolean connectedToApiService = false;
     private OnLocationChangedListener listener;
+    @Getter
+    private Location lastKnownLocation;
+    private final LocationReportingAdjuster locationReportingAdjuster;
 
     public GoogleLocationProvider(Context context) {
         config = new LocationConfig() {
@@ -40,13 +45,7 @@ public class GoogleLocationProvider {
         };
 
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+            Log.e("Location Services", "Must have basic location permissions to run.");
             mGoogleApiClient = null;
         } else {
             mGoogleApiClient = new GoogleApiClient.Builder(context)
@@ -55,6 +54,7 @@ public class GoogleLocationProvider {
                     .addOnConnectionFailedListener(createConnectionFailedListener())
                     .build();
         }
+        locationReportingAdjuster = new LocationReportingAdjuster();
     }
 
     @NonNull
@@ -91,10 +91,18 @@ public class GoogleLocationProvider {
     private LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
-            Log.d(TAG, "onLocationChanged");
-            notifyListeners(location);
+            newLocationArrivedFromGoogleApi(location);
         }
     };
+
+    private void newLocationArrivedFromGoogleApi(Location location) {
+        Log.d(TAG, "onLocationChanged");
+        lastKnownLocation = location;
+        notifyListeners(location);
+        if (locationReportingAdjuster.shouldChange(location)) {
+            startLocationUpdates();
+        }
+    }
 
     public void addLocationListener(OnLocationChangedListener listener) {
         Log.d(TAG, "addLocationListener");
@@ -143,8 +151,13 @@ public class GoogleLocationProvider {
 
     private void startLocationUpdates() {
         Log.d(TAG, "startLocationUpdates");
-        LocationRequest request = new LocationRequestFactory().createRequest(config);
+        LocationRequest request = new LocationRequestFactory().createRequest(config, locationReportingAdjuster.isMovingFast());
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, request, locationListener);
+        Location immediateLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        if (immediateLocation == null) {
+            return;
+        }
+        newLocationArrivedFromGoogleApi(immediateLocation);
     }
 
     private void stopLocationUpdates() {
